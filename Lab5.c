@@ -1,7 +1,7 @@
 /* Aaron Clippinger, Lance Gerday, Bradley Jewett, Mark Blanco
    Section 2 Side A Seat 5
    October 27, 2014
-   Lab 4 */
+   Lab 5 */
 
 
 #include <stdio.h>
