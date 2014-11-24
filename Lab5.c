@@ -32,6 +32,7 @@ void ADC_Init(void); // Initialize A to D Conversion
 unsigned char read_AD_input(void);
 unsigned char read_ranger(void);
 void Check_Menu(void);
+void Data_Point(void);
 void Load_Menu(void);
 
 
@@ -106,35 +107,20 @@ void main(void) {
             getRange = 0; // Reset 80 ms flag
             range_val = read_ranger(); // Read the distance from the ranger
 
-            // range is the value from the ultrasonic ranger
 
+            // control statements
 
-            if (range_val > MAX_RANGE) range_adj = 0; // No obstacle in range
-                // Find adjustment
-            else range_adj = (int) (range_gain * (MAX_RANGE - range_val));
+            servo_PW = servo_PW_CENTER - steering_gain * x_tilt; //(ks is the steering feedback gain)
+            MOTOR_PW = MOTOR_PW_NEUT + drive_gain_y * y_tilt; //(kdy is the y-axis drive feedback gain)
+            //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
+            MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
 
-            // Start a new ping
-            Data[0] = 0x51; // write 0x51 to reg 0 of the ranger:
-            // write one byte of data to reg 0 at R_ADDR
-            i2c_write_data(R_ADDR, 0, Data, 1);
         }
         // Hold the motor in neutral if the slide switch is active
         if (SS_range) Drive_Motor(0);
         else Drive_Motor(SPEED);
         if (c >= 25) {
-            //Print Serial Output for data collection
-            printf_fast_f("Compass Gain: %f Ranger Gain: %f\n\r"
-                    , compass_gain, range_gain);
-            printf("BEGIN DATA POINT\n\r");
-            printf("Error: %d  Heading: %d  Steering PW: %d  Adjustment: %d\n\r"
-                    , compass_error, compass_val, servo_PW, range_adj);
-            printf("END DATA POINT\n\n\r");
-
-            // Print the battery voltage (from AD conversion);
-            voltage = read_AD_input();
-            voltage /= 256;
-            voltage *= 15.6;
-            printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
+            Data_Point();
             Load_Menu();
             c = 0;
         }
@@ -166,6 +152,22 @@ unsigned int Read_Compass() {
     heading = (((unsigned int) c_Data[0] << 8) | c_Data[1]);
     take_heading = 0;
     return heading; // Return C_Data heading between 0 and 3599 
+}
+
+void Data_Point() {
+    //Print Serial Output for data collection
+    printf_fast_f("Compass Gain: %f Ranger Gain: %f\n\r"
+            , compass_gain, range_gain);
+    printf("BEGIN DATA POINT\n\r");
+    printf("Error: %d  Heading: %d  Steering PW: %d  Adjustment: %d\n\r"
+            , compass_error, compass_val, servo_PW, range_adj);
+    printf("END DATA POINT\n\n\r");
+
+    // Print the battery voltage (from AD conversion);
+    voltage = read_AD_input();
+    voltage /= 256;
+    voltage *= 15.6;
+    printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
 }
 
 void Check_Menu() {
@@ -200,7 +202,7 @@ void Check_Menu() {
                 lcd_clear();
                 //Print menu on lcd
                 lcd_print("\n1.0 deg   2.90 deg\n3.180 deg 4.270 deg"
-                        \n5.Enter a value");
+                \n5.Enter a value");
         while (read_keypad() != -1);
                 menu_input = read_keypad();
             while (menu_input == -1) menu_input = read_keypad();
@@ -252,9 +254,17 @@ void Load_Menu(void) {
 //
 
 void Drive_Motor(unsigned int input) {
-
+/*
     MOTOR_PW = ((MOTOR_PW_MAX - MOTOR_PW_NEUT) / 10) * (input) + MOTOR_PW_NEUT;
             PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
+
+
+
+            MOTOR_PW = MOTOR_PW_NEUT + drive_gain * gy(drive_gain is the y - axis drive feedback gain)
+
+            //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
+            MOTOR_PW += steering_gain * abs(gx) (steering_gain is the x - axis drive feedback gain)
+                    */
 }
 
 //-----------------------------------------------------------------------------
