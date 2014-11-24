@@ -15,6 +15,7 @@
 #define MOTOR_PW_NEUT 2760
 #define R_ADDR 0xE0
 #define C_ADDR 0xC0
+#define A_ADDR 0x30
 #define SPEED  8
 
 
@@ -33,6 +34,7 @@ unsigned char read_AD_input(void);
 unsigned char read_ranger(void);
 void Check_Menu(void);
 void Load_Menu(void);
+void Set_Accelerometer(void);
 
 
 //-----------------------------------------------------------------------------
@@ -159,6 +161,40 @@ void main(void) {
 // Helper Functions
 //-----------------------------------------------------------------------------
 //
+
+//Function for reading and setting accerometer values
+void Set_Accelerometer() {
+	//Initialize averages to 0 (first to be summed)
+	signed int x_Average = 0;
+	signed int y_Average = 0;
+	//Read in compass status
+	unsigned char a_Data[4];
+	
+	//Take 4 Readings and Average these
+	for (int x = 0; x < 4; x++) {
+		//Reset c
+		c = 0
+		//While Reading is not ready to be taken
+		i2c_read_data(A_ADDR, 0x27, a_Data, 1);
+		while ((Data[0] & 0x03) != 0x03) {
+			//wait 20ms
+			while (c < 2)
+			c = 0;
+		}
+		//Read Acceleratometer Data
+		i2c_read_data(A_ADDR, 0x28|0x80, a_Data, 4);
+		//Update Average
+		x_Average += ((Data[1] << 8) >> 4);
+		y_Average += ((Data[3] << 8) >> 4);
+	}
+	//Average Results
+	x_Average /= 4;
+	y_Average /= 4;
+	//Set global variables
+	x_tilt = x_Average;
+	y_tilt = y_Average;
+}
+
 
 unsigned int Read_Compass() {
     unsigned char c_Data[2]; // c_Data array to store heading data
