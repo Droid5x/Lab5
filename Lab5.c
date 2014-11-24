@@ -63,6 +63,8 @@ unsigned char Data[2]; // Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
+char getRange = 1;//reset 80ms flag on
+
 float drive_gain_x = 40;    // Drive gain for x axis tilt
 float drive_gain_y = 40;    // Drive gain for y axis tilt
 
@@ -95,6 +97,8 @@ void main(void) {
     c = 0;
     printf("end wait \r\n");
     Load_Menu();
+
+	
 
     //Main Functionality
     while (1) {
@@ -156,9 +160,10 @@ void Set_Accelerometer() {
 	unsigned char a_Data[4];
 	
 	//Take 4 Readings and Average these
-	for (int x = 0; x < 4; x++) {
+	int x;
+	for (x = 0; x < 4; x++) {
 		//Reset c
-		c = 0
+		c = 0;
 		//While Reading is not ready to be taken
 		i2c_read_data(A_ADDR, 0x27, a_Data, 1);
 		while ((Data[0] & 0x03) != 0x03) {
@@ -194,11 +199,11 @@ unsigned int Read_Compass() {
 
 void Data_Point() {
     //Print Serial Output for data collection
-    printf_fast_f("Compass Gain: %f Ranger Gain: %f\n\r"
-            , compass_gain, range_gain);
+    printf_fast_f("Compass Gain: %f Ranger Gain: %f, %f\n\r"
+            , steering_gain, drive_gain_x, drive_gain_y);
     printf("BEGIN DATA POINT\n\r");
-    printf("Error: %d  Heading: %d  Steering PW: %d  Adjustment: %d\n\r"
-            , compass_error, compass_val, servo_PW, range_adj);
+   // printf("Error: %d  Heading: %d  Steering PW: %d  Adjustment: %d\n\r"
+   //       , compass_error, compass_val, servo_PW, range_adj);
     printf("END DATA POINT\n\n\r");
 
     // Print the battery voltage (from AD conversion);
@@ -229,8 +234,8 @@ void Check_Menu() {
                 lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
         while (read_keypad() != -1);
                 keypad_input = kpd_input(1);
-                drive_gain = keypad_input * 0.001;
-                printf_fast_f("New drive gain is %f\n\r", drive_gain);
+                //drive_gain = keypad_input * 0.001;
+//                printf_fast_f("New drive gain is %f\n\r", drive_gain);
                 Load_Menu();
         } else if ((menu_input - '0') == 3) { //If desired heading is selected
         printf("Please choose an option: \n\r");
@@ -239,8 +244,7 @@ void Check_Menu() {
                 \n\r4 : 270 degrees\n\r5 : Enter a value\n\r");
                 lcd_clear();
                 //Print menu on lcd
-                lcd_print("\n1.0 deg   2.90 deg\n3.180 deg 4.270 deg
-                        \n5.Enter a value");
+                lcd_print("\n1.0 deg   2.90 deg\n3.180 deg 4.270 deg\n5.Enter a value");
 
         while (read_keypad() != -1);
                 menu_input = read_keypad();
@@ -254,8 +258,7 @@ void Check_Menu() {
                 } else if ((menu_input - '0') == 4) { //For 270 degrees
                     desired_heading = 2700;
                 } else if ((menu_input - '0') == 5) { //For enter own value
-                    printf("Please enter a 5 digit compass heading 
-                            (of the form : 0xxxx) \n\r");
+                    printf("Please enter a 5 digit compass heading (of the form : 0xxxx) \n\r");
                             lcd_clear();
                             lcd_print("\nEnter a 5 digit\nheading (0xxxx)\n\r");
 
@@ -470,7 +473,7 @@ void Steering_Servo(unsigned int current_heading) {
         compass_error = 3600 % abs(compass_error); // error
     }
     // Update PW based on error and distance to obstacle
-    servo_PW = steering_gain * compass_error + range_adj + servo_PW_CENTER;
+//    servo_PW = steering_gain * compass_error + range_adj + servo_PW_CENTER;
     if (servo_PW > servo_PW_MAX) { // Check if pulsewidth maximum exceeded
         servo_PW = servo_PW_MAX; // Set PW to a maximum value
     } else if (servo_PW < servo_PW_MIN) { // Check if less than pulsewidth min
