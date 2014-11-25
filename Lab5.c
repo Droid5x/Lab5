@@ -34,12 +34,12 @@ unsigned char read_AD_input(void);
 unsigned char read_ranger(void);
 void Check_Menu(void);
 void Load_Menu(void);
-void Set_Accelerometer(void);
+void Read_Accelerometer(void);
 
 
 //-----------------------------------------------------------------------------
 // Global Variables
-//-----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 unsigned char interrupts;
 unsigned char take_heading;
 unsigned int servo_PW_CENTER = 2905; // Center PW value
@@ -163,20 +163,19 @@ void main(void) {
 //
 
 //Function for reading and setting accerometer values
-void Set_Accelerometer() {
+void Read_Accelerometer() {
 	//Initialize averages to 0 (first to be summed)
 	signed int x_Average = 0;
 	signed int y_Average = 0;
-	//Read in compass status
+	//Read in accelerometer status
 	unsigned char a_Data[4];
-	
 	//Take 4 Readings and Average these
 	for (int x = 0; x < 4; x++) {
-		//Reset c
-		c = 0
 		//While Reading is not ready to be taken
 		i2c_read_data(A_ADDR, 0x27, a_Data, 1);
 		while ((Data[0] & 0x03) != 0x03) {
+            //Reset c
+            c = 0;
 			//wait 20ms
 			while (c < 2)
 			c = 0;
@@ -193,6 +192,7 @@ void Set_Accelerometer() {
 	//Set global variables
 	x_tilt = x_Average;
 	y_tilt = y_Average;
+    getTilt = 1;
 }
 
 
@@ -430,16 +430,8 @@ void SMB_Init(void) {
 
 void PCA_ISR(void) __interrupt 9 {
     if (CF) { // If an interrupt has occured
-        interrupts++;
-                c++; // Counter for initial wait to initialize motor
-        if (interrupts % 2 == 0) {
-            take_heading = 1; // It is appropriate to take a reading
-        }
-        if (interrupts >= 4) {
-
-            getRange = 1; // 80ms flag
-                    interrupts = 0; // Reset counter
-        }
+        c++; // General purpose counter variable
+        getTilt = 1;
         CF = 0; // Clear Interrupt Flag
                 PCA0 = 28672; // Jump timer ahead for given period
     }
