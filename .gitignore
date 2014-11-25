@@ -1,5 +1,10 @@
 *.#1
 *.#2
 *.#3
-*.adb
 *.out
+*.wsp
+*.sym
+*.rel
+*.lst
+*.asm
+*.adb
