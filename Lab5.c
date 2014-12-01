@@ -25,16 +25,14 @@
 void Port_Init(void);
 void PCA_Init(void);
 void Drive_Motor(unsigned int);
-unsigned int Read_Compass();
-void Steering_Servo(unsigned int current_heading);
+void Steering_Servo(void);
 void Interrupt_Init(void);
 void SMB_Init(void);
 void ADC_Init(void); // Initialize A to D Conversion
 unsigned char read_AD_input(void);
-unsigned char read_ranger(void);
 void Check_Menu(void);
-void Data_Point(void);
 void Load_Menu(void);
+void Data_Point(void);
 void Read_Accelerometer(void);
 
 
@@ -48,27 +46,20 @@ unsigned int servo_PW_MIN = 2385; // Minimum left PW value
 unsigned int servo_PW_MAX = 3315; // Maximum right PW value
 unsigned int servo_PW = 2905; // Start PW at center
 
-unsigned int desired_heading = 900; // Set initial heading to 90 degrees
-
-signed int compass_error; // Global variable for compass error
-unsigned int compass_val; // Current heading
-float steering_gain = 0.417; // Compass gain setting
 float voltage; // Global voltage variable for checking battery voltage
 
 unsigned int MOTOR_PW = 0; // Motor Pulsewidth to control motor speed
 unsigned int c = 0; // Counter for printing data at regular intervals
 unsigned char getTilt = 1; // Boolean flag to tell if safe to read accelerometer
-unsigned int range_val = 0; // Range value in cm
 unsigned char Data[2]; // Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-char getRange = 1;//reset 80ms flag on
-
+float steering_gain = 0.417; // Compass gain setting
 float drive_gain_x = 40;    // Drive gain for x axis tilt
 float drive_gain_y = 40;    // Drive gain for y axis tilt
 
-__sbit __at 0xB6 SS_range; // Assign P3.6 to SS (Slide Switch)
+__sbit __at 0xB6 SS_drive; // Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; // Slide switch input pin at P3.7
 
 //-----------------------------------------------------------------------------
@@ -83,7 +74,7 @@ void main(void) {
     PCA_Init();
     SMB_Init();
     ADC_Init();
-    Accel_Init();
+    Accel_Init();       // From i2c.h
     Interrupt_Init();
     printf("Starting\n\r");
 
@@ -96,43 +87,36 @@ void main(void) {
     while (c < 50); //wait 1 second in neutral
     c = 0;
     printf("end wait \r\n");
-    Load_Menu();
+    //Load_Menu();
 
 	
 
     //Main Functionality
     while (1) {
-        if (SS_steer) { // If the slide switch is active, set PW to center
+        if (SS_steer) {// If the slide switch is active, set PW to center
             servo_PW = servo_PW_CENTER;
             PCA0CP0 = 0xFFFF - servo_PW; // Update comparator with new PW value
-        } else if (take_heading) { // Otherwise take a new heading
-            compass_val = Read_Compass();
-            Steering_Servo(compass_val); // Change PW based on current heading
+        } else if (getTilt) { // Otherwise take a new heading
+            Read_Accelerometer();	// Get new readings and store globally
+            Data_Point();
+			Steering_Servo(); // Change PW based on current heading
             PCA0CP0 = 0xFFFF - servo_PW; // Update comparator with new PW value
         }
+        // control statements
+        servo_PW = servo_PW_CENTER - steering_gain * x_tilt; //(ks is the steering feedback gain)
+        MOTOR_PW = MOTOR_PW_NEUT + drive_gain_y * y_tilt; //(kdy is the y-axis drive feedback gain)
+        //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
+        MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
 
-
-        if (getRange) {
-            getRange = 0; // Reset 80 ms flag
-            range_val = read_ranger(); // Read the distance from the ranger
-
-
-            // control statements
-            servo_PW = servo_PW_CENTER - steering_gain * x_tilt; //(ks is the steering feedback gain)
-            MOTOR_PW = MOTOR_PW_NEUT + drive_gain_y * y_tilt; //(kdy is the y-axis drive feedback gain)
-            //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
-            MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
-
-        }
         // Hold the motor in neutral if the slide switch is active
-        if (SS_range) Drive_Motor(0);
+        if (SS_drive) Drive_Motor(0);
         else Drive_Motor(SPEED);
         if (c >= 25) {
             Data_Point();
             Load_Menu();
             c = 0;
         }
-        while (SS_range && SS_steer) {
+        while (SS_drive && SS_steer) {
             Drive_Motor(0);
             servo_PW = servo_PW_CENTER;
             PCA0CP0 = 0xFFFF - servo_PW;
@@ -156,23 +140,24 @@ void Read_Accelerometer() {
 	//Initialize averages to 0 (first to be summed)
 	signed int x_Average = 0;
 	signed int y_Average = 0;
+    int x = 0;
 	//Read in accelerometer status
 	unsigned char a_Data[4];
 	//Take 4 Readings and Average these
-	for (int x = 0; x < 4; x++) {
+	for (x; x < 4; x++) {
 		//While Reading is not ready to be taken
-		i2c_read_data(A_ADDR, 0x27, a_Data, 1);
-		while ((Data[0] & 0x03) != 0x03) {
+		while ((a_Data[0] & 0x03) != 0x03) {
+            i2c_read_data(A_ADDR, 0x27, a_Data, 1);
             //Reset c
             c = 0;
 			//wait 20ms
-			while (c < 2)
+			while (c < 1);
 		}
 		//Read Acceleratometer Data
 		i2c_read_data(A_ADDR, 0x28|0x80, a_Data, 4);
 		//Update Average
-		x_Average += ((Data[1] << 8) >> 4);
-		y_Average += ((Data[3] << 8) >> 4);
+		x_Average += ((a_Data[1] << 8) >> 4);
+		y_Average += ((a_Data[3] << 8) >> 4);
 	}
 	//Average Results
 	x_Average /= 4;
@@ -180,28 +165,16 @@ void Read_Accelerometer() {
 	//Set global variables
 	x_tilt = x_Average;
 	y_tilt = y_Average;
-    getTilt = 1;
-}
-
-
-unsigned int Read_Compass() {
-    unsigned char c_Data[2]; // c_Data array to store heading data
-    unsigned int heading; // Variable to store heading data
-    // Read data from compass registers, store it in c_Data buffer
-    i2c_read_data(C_ADDR, 2, c_Data, 2);
-    //Take high and low c_data bytes, convert to int
-    heading = (((unsigned int) c_Data[0] << 8) | c_Data[1]);
-    take_heading = 0;
-    return heading; // Return C_Data heading between 0 and 3599 
+    getTilt = 0;
 }
 
 void Data_Point() {
     //Print Serial Output for data collection
-    printf_fast_f("Compass Gain: %f Ranger Gain: %f, %f\n\r"
+    printf_fast_f("Steering: %f Drive X: %f Drive Y: %f\n\r"
             , steering_gain, drive_gain_x, drive_gain_y);
     printf("BEGIN DATA POINT\n\r");
-   // printf("Error: %d  Heading: %d  Steering PW: %d  Adjustment: %d\n\r"
-   //       , compass_error, compass_val, servo_PW, range_adj);
+    printf("x_tilt: %d  y_tilt: %d  \n\r"
+          ,x_tilt, y_tilt );
     printf("END DATA POINT\n\n\r");
 
     // Print the battery voltage (from AD conversion);
@@ -211,7 +184,7 @@ void Data_Point() {
     printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
 }
 
-void Check_Menu() {
+void Check_Menu() {/*
     signed char menu_input = read_keypad(); //Determine pressed button on keypad
     unsigned int keypad_input;
 
@@ -245,16 +218,16 @@ void Check_Menu() {
                 lcd_print("\n1.0 deg   2.90 deg\n3.180 deg 4.270 deg\n5.Enter a value");
 
         while (read_keypad() != -1);
-                menu_input = read_keypad();
+               menu_input = read_keypad();
             while (menu_input == -1) menu_input = read_keypad();
                 if ((menu_input - '0') == 1) { //For 0 degrees
-                    desired_heading = 0;
+                    // DO STUFF
                 } else if ((menu_input - '0') == 2) { //For 90 degrees
-                    desired_heading = 900;
+                    // DO STUFF
                 } else if ((menu_input - '0') == 3) { //For 180 degrees
-                    desired_heading = 1800;
+                    // DO STUFF
                 } else if ((menu_input - '0') == 4) { //For 270 degrees
-                    desired_heading = 2700;
+                    // DO STUFF
                 } else if ((menu_input - '0') == 5) { //For enter own value
                     printf("Please enter a 5 digit compass heading (of the form : 0xxxx) \n\r");
                             lcd_clear();
@@ -265,22 +238,21 @@ void Check_Menu() {
                             desired_heading = keypad_input % 3600;
                     }
         printf("New heading is %d\n\r", desired_heading);
-                Load_Menu();
-    }
+        Load_Menu();
+    }*/
 }
 
 void Load_Menu(void) {
+    /*unsigned int PW_Percent;
+    lcd_clear();
+    lcd_print("1. Steering Gain\n");
+    lcd_print("2. Drive Gain\n");
+    lcd_print("3. Desired Heading\n");
 
-    unsigned int PW_Percent;
-            lcd_clear();
-            lcd_print("1. Steering Gain\n");
-            lcd_print("2. Drive Gain\n");
-            lcd_print("3. Desired Heading\n");
-
-            PW_Percent = (abs(servo_PW - servo_PW_CENTER)*200.0)
-            / ((servo_PW_MAX - servo_PW_MIN));
-            lcd_print("R:%3dH:%4dS:%2dB:%2d\n", range_val, compass_val,
-            PW_Percent, (int) voltage);
+    PW_Percent = (abs(servo_PW - servo_PW_CENTER)*200.0)
+    / ((servo_PW_MAX - servo_PW_MIN));
+    lcd_print("R:%3dH:%4dS:%2dB:%2d\n", range_val, compass_val,
+    PW_Percent, (int) voltage);*/
 }
 
 
@@ -306,27 +278,6 @@ void Drive_Motor(unsigned int input) {
             MOTOR_PW += steering_gain * abs(gx) (steering_gain is the x - axis drive feedback gain)
                     */
 }
-
-//-----------------------------------------------------------------------------
-// read_ranger
-//-----------------------------------------------------------------------------
-//
-// Read the value of the ultrasonic ranger
-// 
-
-unsigned char read_ranger(void) {
-    unsigned int range = 0;
-            unsigned char slave_reg = 2; //start at register 2
-            unsigned char num_bytes = 2; //read 2 bytes
-
-            // read two bytes, starting at reg 2
-            i2c_read_data(R_ADDR, slave_reg, Data, num_bytes);
-
-            range = (((unsigned int) Data[0] << 8) | Data[1]);
-
-    return range;
-}
-
 
 //-----------------------------------------------------------------------------
 // Port_Init
@@ -454,8 +405,8 @@ void PCA_ISR(void) __interrupt 9 {
 //-----------------------------------------------------------------------------
 //
 
-void Steering_Servo(unsigned int current_heading) {
-    compass_error = desired_heading - current_heading; // Calculate signed error
+void Steering_Servo(void) {
+    /*compass_error = desired_heading - current_heading; // Calculate signed error
     if (compass_error > 1800) { // If the error is greater than 1800
         compass_error = 3600 % compass_error; // or less than -1800, then the 
                 compass_error *= -1; // conjugate angle needs to be generated
@@ -468,5 +419,5 @@ void Steering_Servo(unsigned int current_heading) {
         servo_PW = servo_PW_MAX; // Set PW to a maximum value
     } else if (servo_PW < servo_PW_MIN) { // Check if less than pulsewidth min
         servo_PW = servo_PW_MIN; // Set SERVO_PW to a minimum value
-    }
+    }*/
 }
