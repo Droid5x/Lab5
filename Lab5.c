@@ -232,7 +232,9 @@ void Drive_Motor(void) {
     MOTOR_PW = MOTOR_PW_NEUT + drive_gain_x * -1 * x_tilt;//(drive_gain is the y - axis drive feedback gain)
     //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
     MOTOR_PW += drive_gain_y * abs(y_tilt); //(steering_gain is the x - axis drive feedback gain)
-    //MOTOR_PW*=1.2;
+    
+    if(abs(y_tilt)<50||x_tilt<50) = MOTOR_PW = MOTOR_PW_NEUT;
+    
     if(MOTOR_PW > MOTOR_PW_MAX)MOTOR_PW = MOTOR_PW_MAX;
     if(MOTOR_PW < MOTOR_PW_MIN)MOTOR_PW = MOTOR_PW_MIN;
     PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
