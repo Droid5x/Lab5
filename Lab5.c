@@ -10,14 +10,12 @@
 #include <i2c.h>
 
 #define MAX_RANGE 60
-#define MOTOR_PW_MIN 2030
-#define MOTOR_PW_MAX 3500
+#define MOTOR_PW_MIN 2760//2030
+#define MOTOR_PW_MAX 4700
 #define MOTOR_PW_NEUT 2760
 #define R_ADDR 0xE0
 #define C_ADDR 0xC0
 #define A_ADDR 0x30
-#define SPEED  8
-
 
 //-----------------------------------------------------------------------------
 // Function Prototypes
@@ -55,9 +53,9 @@ unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 2;	// Steering gain setting
-float drive_gain_x = 4;    	// Drive gain for x axis tilt
-float drive_gain_y = 4;    	// Drive gain for y axis tilt
+float steering_gain = 10;	// Steering gain setting
+float drive_gain_x = 8;    	// Drive gain for x axis tilt
+float drive_gain_y = 12;    	// Drive gain for y axis tilt
 
 __sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
@@ -82,12 +80,12 @@ void main(void) {
     printf("Embedded Control Drive Motor Control\r\n");
 
     // Initialize motor in neutral and wait for 1 second
-    Drive_Motor(0);
+    Drive_Motor();
     c = 0;
     while (c < 50); //wait 1 second in neutral
     c = 0;
     printf("end wait \r\n");
-    //Load_Menu();
+    Load_Menu();
 
 	
 
@@ -109,17 +107,17 @@ void main(void) {
         MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
 
         // Hold the motor in neutral if the slide switch is active
-        if (SS_drive) Drive_Motor(0);
-        else Drive_Motor(SPEED);
+        if (SS_drive) PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
+        else Drive_Motor();
         if (c >= 25) {
             Data_Point();
             Load_Menu();
             c = 0;
         }
         while (SS_drive && SS_steer) {
-            Drive_Motor(0);
-            servo_PW = servo_PW_CENTER;
-            PCA0CP0 = 0xFFFF - servo_PW;
+            // Center steering and neutralize motor
+            PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
+            PCA0CP0 = 0xFFFF - servo_PW_CENTER;
             Check_Menu();
             c = 0;
             while (c < 5) {
@@ -173,8 +171,7 @@ void Data_Point() {
     printf_fast_f("Steering: %f Drive X: %f Drive Y: %f\n\r"
             , steering_gain, drive_gain_x, drive_gain_y);
     printf("BEGIN DATA POINT\n\r");
-    printf("x_tilt: %d  y_tilt: %d  \n\r"
-          ,x_tilt, y_tilt );
+    printf_fast_f("X:%3dY:%4dS:%2dD:%2dB:%.2f\n",x_tilt, y_tilt, servo_PW, MOTOR_PW , voltage);
     printf("END DATA POINT\n\n\r");
 
     // Print the battery voltage (from AD conversion);
@@ -184,75 +181,49 @@ void Data_Point() {
     printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
 }
 
-void Check_Menu() {/*
+void Check_Menu() {
     signed char menu_input = read_keypad(); //Determine pressed button on keypad
     unsigned int keypad_input;
 
     if ((menu_input - '0') == 1) { //If steering gain is selected
-        printf("Please enter a 5 digit gain constant 
-                (of the form : xx.xxx) \n\r");
-                lcd_clear();
-                lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
+        printf("Please enter a 5 digit gain constant (of the form : xx.xxx) \n\r");
+        lcd_clear();
+        lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
         while (read_keypad() != -1);
-                keypad_input = kpd_input(1);
-                steering_gain = keypad_input * 0.001;
-                printf_fast_f("New steering gain is %f\n\r", steering_gain);
-                Load_Menu();
-        } else if ((menu_input - '0') == 2) { //If drive (motor) gain is selected
-        printf("Please enter a 5 digit gain constant 
-                (of the form : xx.xxx) \n\r");
-                lcd_clear();
-                lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
-        while (read_keypad() != -1);
-                keypad_input = kpd_input(1);
-                //drive_gain = keypad_input * 0.001;
-//                printf_fast_f("New drive gain is %f\n\r", drive_gain);
-                Load_Menu();
-        } else if ((menu_input - '0') == 3) { //If desired heading is selected
-        printf("Please choose an option: \n\r");
-                //Print menu on terminal output
-                printf("1: 0 degrees\n\r2: 90 degrees\n\r3: 180 degrees
-                \n\r4 : 270 degrees\n\r5 : Enter a value\n\r");
-                lcd_clear();
-                //Print menu on lcd
-                lcd_print("\n1.0 deg   2.90 deg\n3.180 deg 4.270 deg\n5.Enter a value");
-
-        while (read_keypad() != -1);
-               menu_input = read_keypad();
-            while (menu_input == -1) menu_input = read_keypad();
-                if ((menu_input - '0') == 1) { //For 0 degrees
-                    // DO STUFF
-                } else if ((menu_input - '0') == 2) { //For 90 degrees
-                    // DO STUFF
-                } else if ((menu_input - '0') == 3) { //For 180 degrees
-                    // DO STUFF
-                } else if ((menu_input - '0') == 4) { //For 270 degrees
-                    // DO STUFF
-                } else if ((menu_input - '0') == 5) { //For enter own value
-                    printf("Please enter a 5 digit compass heading (of the form : 0xxxx) \n\r");
-                            lcd_clear();
-                            lcd_print("\nEnter a 5 digit\nheading (0xxxx)\n\r");
-
-                    while (read_keypad() == -1);
-                            keypad_input = kpd_input(1);
-                            desired_heading = keypad_input % 3600;
-                    }
-        printf("New heading is %d\n\r", desired_heading);
+        keypad_input = kpd_input(1);
+        steering_gain = keypad_input * 0.001;
+        printf_fast_f("New steering gain is %f\n\r", steering_gain);
         Load_Menu();
-    }*/
+    } else if ((menu_input - '0') == 2) { //If drive (motor) gain x is selected
+        printf("Please enter a 5 digit gain constant (of the form : xx.xxx) \n\r");
+        lcd_clear();
+        lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
+        while (read_keypad() != -1);
+        keypad_input = kpd_input(1);
+        drive_gain_x = keypad_input * 0.001;
+        printf_fast_f("New X drive gain is %f\n\r", drive_gain_x);
+        Load_Menu();
+    } else if ((menu_input - '0') == 3) { //If drive (motor) gain y is selected
+        printf("Please enter a 5 digit gain constant (of the form : xx.xxx) \n\r");
+        lcd_clear();
+        lcd_print("Enter a 5 digit gain\nconstant (xx.xxx)");
+        while (read_keypad() != -1);
+        keypad_input = kpd_input(1);
+        drive_gain_y = keypad_input * 0.001;
+        printf_fast_f("New Y drive gain is %f\n\r", drive_gain_y);
+        Load_Menu();
+    }
 }
 
 void Load_Menu(void) {
-    /*unsigned int PW_Percent;
+    //unsigned int PW_Percent;
     lcd_clear();
     lcd_print("1. Steering Gain\n");
-    lcd_print("2. Drive Gain\n");
-    lcd_print("3. Desired Heading\n");
+    lcd_print("2. Drive X Gain\n");
+    lcd_print("3. Drive Y Gain\n");
 
-    PW_Percent = (abs(servo_PW - servo_PW_CENTER)*200.0)
-    / ((servo_PW_MAX - servo_PW_MIN));
-    lcd_print("R:%3dH:%4dS:%2dB:%2d\n", range_val, compass_val,
-    PW_Percent, (int) voltage);*/
+    //PW_Percent = (abs(servo_PW - servo_PW_CENTER)*200.0) / ((servo_PW_MAX - servo_PW_MIN));
+    lcd_print("X:%3dY:%4dS:%2dD:%2dB:%2d\n",x_tilt, y_tilt, servo_PW, MOTOR_PW , (int)(voltage*10));
 }
 
 
@@ -266,15 +237,13 @@ void Load_Menu(void) {
 //
 
 void Drive_Motor(void) {     
-    MOTOR_PW = MOTOR_PW_NEUT + drive_gain * y_tilt//(drive_gain is the y - axis drive feedback gain)
-
-            //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
-            MOTOR_PW += steering_gain * abs(x_tilt) //(steering_gain is the x - axis drive feedback gain)
-            
-            if(MOTOR_PW > MOTOR_PW_MAX)MOTOR_PW = MOTOR_PW_MAX;
-            if(MOTOR_PW < MOTOR_PW_MIN)MOTOR_PW = MOTOR_PW_MIN;
-            
-            PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
+    MOTOR_PW = MOTOR_PW_NEUT + drive_gain_x * -1 * x_tilt;//(drive_gain is the y - axis drive feedback gain)
+    //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
+    MOTOR_PW += drive_gain_y * abs(y_tilt); //(steering_gain is the x - axis drive feedback gain)
+    //MOTOR_PW*=1.2;
+    if(MOTOR_PW > MOTOR_PW_MAX)MOTOR_PW = MOTOR_PW_MAX;
+    if(MOTOR_PW < MOTOR_PW_MIN)MOTOR_PW = MOTOR_PW_MIN;
+    PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
 }
 
 //-----------------------------------------------------------------------------
