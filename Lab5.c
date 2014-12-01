@@ -48,19 +48,19 @@ unsigned int servo_PW = 2905; // Start PW at center
 
 float voltage; // Global voltage variable for checking battery voltage
 
-unsigned int MOTOR_PW = 0; // Motor Pulsewidth to control motor speed
-unsigned int c = 0; // Counter for printing data at regular intervals
-unsigned char getTilt = 1; // Boolean flag to tell if safe to read accelerometer
-unsigned char Data[2]; // Array for sending and receiving from ranger
+unsigned int MOTOR_PW = 0; 	// Motor Pulsewidth to control motor speed
+unsigned int c = 0; 		// Counter for printing data at regular intervals
+unsigned char getTilt = 1; 	// Boolean flag to tell if safe to read accelerometer
+unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 0.417; // Compass gain setting
-float drive_gain_x = 40;    // Drive gain for x axis tilt
-float drive_gain_y = 40;    // Drive gain for y axis tilt
+float steering_gain = 2;	// Steering gain setting
+float drive_gain_x = 4;    	// Drive gain for x axis tilt
+float drive_gain_y = 4;    	// Drive gain for y axis tilt
 
-__sbit __at 0xB6 SS_drive; // Assign P3.6 to SS (Slide Switch)
-__sbit __at 0xB7 SS_steer; // Slide switch input pin at P3.7
+__sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
+__sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
 
 //-----------------------------------------------------------------------------
 // Main Function
