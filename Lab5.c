@@ -24,7 +24,7 @@
 //-----------------------------------------------------------------------------
 void Port_Init(void);
 void PCA_Init(void);
-void Drive_Motor(unsigned int);
+void Drive_Motor(void);
 void Steering_Servo(void);
 void Interrupt_Init(void);
 void SMB_Init(void);
@@ -265,18 +265,16 @@ void Load_Menu(void) {
 // of the drive motor.
 //
 
-void Drive_Motor(unsigned int input) {
-/*
-    MOTOR_PW = ((MOTOR_PW_MAX - MOTOR_PW_NEUT) / 10) * (input) + MOTOR_PW_NEUT;
-            PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
-
-
-
-            MOTOR_PW = MOTOR_PW_NEUT + drive_gain * gy(drive_gain is the y - axis drive feedback gain)
+void Drive_Motor(void) {     
+    MOTOR_PW = MOTOR_PW_NEUT + drive_gain * y_tilt//(drive_gain is the y - axis drive feedback gain)
 
             //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
-            MOTOR_PW += steering_gain * abs(gx) (steering_gain is the x - axis drive feedback gain)
-                    */
+            MOTOR_PW += steering_gain * abs(x_tilt) //(steering_gain is the x - axis drive feedback gain)
+            
+            if(MOTOR_PW > MOTOR_PW_MAX)MOTOR_PW = MOTOR_PW_MAX;
+            if(MOTOR_PW < MOTOR_PW_MIN)MOTOR_PW = MOTOR_PW_MIN;
+            
+            PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
 }
 
 //-----------------------------------------------------------------------------
