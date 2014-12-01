@@ -53,9 +53,9 @@ unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 10;	// Steering gain setting
-float drive_gain_x = 8;    	// Drive gain for x axis tilt
-float drive_gain_y = 12;    	// Drive gain for y axis tilt
+float steering_gain = 8.5;  // Steering gain setting
+float drive_gain_x = 9.5;   // Drive gain for x axis tilt
+float drive_gain_y = 15;    // Drive gain for y axis tilt
 
 __sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
@@ -86,6 +86,7 @@ void main(void) {
     c = 0;
     printf("end wait \r\n");
     Load_Menu();
+    printf_fast_f("X Tilt: Y Tilt: Steering PW: Drive PW: Battery Voltage:\n\r");
 
 	
 
@@ -109,10 +110,10 @@ void main(void) {
         // Hold the motor in neutral if the slide switch is active
         if (SS_drive) PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
         else Drive_Motor();
-        if (c >= 25) {
+        c = 0;
+        if (c >= 10) {
             Data_Point();
             Load_Menu();
-            c = 0;
         }
         while (SS_drive && SS_steer) {
             // Center steering and neutralize motor
@@ -120,9 +121,7 @@ void main(void) {
             PCA0CP0 = 0xFFFF - servo_PW_CENTER;
             Check_Menu();
             c = 0;
-            while (c < 5) {
-            }
-            c = 0;
+            while (c < 5);
         }
     }
 }
@@ -168,17 +167,12 @@ void Read_Accelerometer() {
 
 void Data_Point() {
     //Print Serial Output for data collection
-    printf_fast_f("Steering: %f Drive X: %f Drive Y: %f\n\r"
-            , steering_gain, drive_gain_x, drive_gain_y);
-    printf("BEGIN DATA POINT\n\r");
-    printf_fast_f("X:%3dY:%4dS:%2dD:%2dB:%.2f\n",x_tilt, y_tilt, servo_PW, MOTOR_PW , voltage);
-    printf("END DATA POINT\n\n\r");
-
+    printf_fast_f("%d,%d,%d,%d,%.2f\n\r",x_tilt, y_tilt, servo_PW, MOTOR_PW , voltage);
     // Print the battery voltage (from AD conversion);
     voltage = read_AD_input();
     voltage /= 256;
     voltage *= 15.6;
-    printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
+    //printf_fast_f("Battery voltage is: %.2f\n\r", voltage);
 }
 
 void Check_Menu() {
