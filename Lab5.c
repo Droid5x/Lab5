@@ -48,6 +48,7 @@ float voltage; // Global voltage variable for checking battery voltage
 
 unsigned int MOTOR_PW = 0; 	// Motor Pulsewidth to control motor speed
 unsigned int c = 0; 		// Counter for printing data at regular intervals
+unsigned char i = 0;         // Secondary counter for printing data at regular intervals
 unsigned char getTilt = 1; 	// Boolean flag to tell if safe to read accelerometer
 unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
@@ -83,7 +84,6 @@ void main(void) {
     Drive_Motor();
     c = 0;
     while (c < 50); //wait 1 second in neutral
-    c = 0;
     printf("end wait \r\n");
     Load_Menu();
     printf_fast_f("X Tilt: Y Tilt: Steering PW: Drive PW: Battery Voltage:\n\r");
@@ -92,13 +92,14 @@ void main(void) {
 
     //Main Functionality
     while (1) {
+        if (getTilt) { // Take a new heading
+            Read_Accelerometer();	// Get new readings and store globally
+        }
         if (SS_steer) {// If the slide switch is active, set PW to center
             servo_PW = servo_PW_CENTER;
             PCA0CP0 = 0xFFFF - servo_PW; // Update comparator with new PW value
-        } else if (getTilt) { // Otherwise take a new heading
-            Read_Accelerometer();	// Get new readings and store globally
-            Data_Point();
-			Steering_Servo(); // Change PW based on current heading
+        } else {
+            Steering_Servo(); // Change PW based on current heading
             PCA0CP0 = 0xFFFF - servo_PW; // Update comparator with new PW value
         }
         // control statements
@@ -110,10 +111,10 @@ void main(void) {
         // Hold the motor in neutral if the slide switch is active
         if (SS_drive) PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
         else Drive_Motor();
-        c = 0;
-        if (c >= 10) {
+        if (i > 10) {
             Data_Point();
             Load_Menu();
+            i = 0;
         }
         while (SS_drive && SS_steer) {
             // Center steering and neutralize motor
@@ -210,14 +211,11 @@ void Check_Menu() {
 }
 
 void Load_Menu(void) {
-    //unsigned int PW_Percent;
     lcd_clear();
     lcd_print("1. Steering Gain\n");
     lcd_print("2. Drive X Gain\n");
     lcd_print("3. Drive Y Gain\n");
-
-    //PW_Percent = (abs(servo_PW - servo_PW_CENTER)*200.0) / ((servo_PW_MAX - servo_PW_MIN));
-    lcd_print("X:%3dY:%4dS:%2dD:%2dB:%2d\n",x_tilt, y_tilt, servo_PW, MOTOR_PW , (int)(voltage*10));
+    lcd_print("X:%4dY:%4dB:%3ddV\n",x_tilt, y_tilt, (int)(voltage*10) );
 }
 
 
@@ -352,11 +350,12 @@ void SMB_Init(void) {
 //
 
 void PCA_ISR(void) __interrupt 9 {
-    if (CF) { // If an interrupt has occured
-        c++; // General purpose counter variable
+    if (CF) {   // If an interrupt has occured
+        i++;    // General purpose counter variable
+        c++;    // General purpose counter variable
         getTilt = 1;
         CF = 0; // Clear Interrupt Flag
-                PCA0 = 28672; // Jump timer ahead for given period
+        PCA0 = 28672; // Jump timer ahead for given period
     }
     PCA0CN &= 0xC0; // Handle other PCA interrupts
 }
