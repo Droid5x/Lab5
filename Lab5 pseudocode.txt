@@ -1,0 +1,90 @@
+Mark Blanco
+Brad Jewett
+Side B Seat 27
+Aaron Clippinger
+Lance Gerday
+Litec Section 02
+Side A Seat 5
+Lab 5 Pseudocode
+
+#include necessary header files
+#define constants
+Function Prototypes
+initialize necessary counters and other global variables
+Set initial values for gains and tolerance
+
+main()
+    run default setup for c8051
+    run init functions for hardware (pwm, PCA, etc)
+    wait to set neutral for motor
+    while(1)
+
+        if  steering slide switch is active:
+            Update current steering pulse width value to center
+            update CCM registers to reflect new pwm value
+	
+	else Read_Accelerometer()
+
+        if absolute value of xtilt is greater than the tolerance
+	    call steering servo to steer car in direction of slope.
+
+	if absolute value of ytilt is greater than tolerance
+	    call drive motor to drive car in direction of slope
+	else if xtilt is not within tolorance
+	    force car to drive forward as it is currently parallel to slope
+
+	while both slide switchs are off
+	    center steering and stop drive motor
+	    Check_Menu() every 100ms
+            if keys pressed on keypad:
+                 begin reading key presses and update settings as needed
+
+	read battery level and display to LCD using ADC
+
+	print x and y acceleration, drive and steering pulsewidths, and battery 		voltage for data collection
+        
+	
+//----------------------------------------------------------------------------
+Steering_Servo(xtilt)
+    calculate steering servo pulsewidth from xtilt value and steering gain 
+    confirm value is within bounds
+    set high and low byte of CCM to reflect pulsewidth 
+//----------------------------------------------------------------------------
+Load_Menu()
+    Displays menu on LCD display
+    1. XXXXXXXX Gain
+    2. XXXXXXXX Gain
+    3. XXXXXXXX Gain
+    Print current values of range, current heading, and battery voltage
+//----------------------------------------------------------------------------
+Check_Menu()
+    if '1' is pressed
+	request a 5 digit value for XXXXXXXXXX gain
+	multiply value by 0.001
+    if '2' is pressed
+	request a 5 digit value for XXXXXXXXXX gain
+	multiply value by 0.001
+    if '3' is pressed
+	request a 5 digit value for XXXXXXXXXX gain
+	multiply value by 0.001
+    
+//----------------------------------------------------------------------------
+Drive_Motor(ytilt)
+    calculate drive motor pulsewidth from 
+    confirm value is within bounds
+    set high and low byte of CCM
+//----------------------------------------------------------------------------
+PCA_ISR()
+    Set initial PCA0 value for a 20ms period
+    increment counters to read accelerometer
+    Clear overflow flag
+//----------------------------------------------------------------------------
+Read_Accelerometer()
+    while i<8
+	i++
+	read accelerometer
+	store values for x and y tilts
+	wait for 20ms so that accelerometer can update
+    average 8 values for x and y tilt to compensate for signal noise
+    return values of xtilt and ytilt
+
