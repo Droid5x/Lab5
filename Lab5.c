@@ -406,18 +406,13 @@ void PCA_ISR(void) __interrupt 9 {
 //
 
 void Steering_Servo(void) {
-    /*compass_error = desired_heading - current_heading; // Calculate signed error
-    if (compass_error > 1800) { // If the error is greater than 1800
-        compass_error = 3600 % compass_error; // or less than -1800, then the 
-                compass_error *= -1; // conjugate angle needs to be generated
-    } else if (compass_error < -1800) { // with opposite sign from the original
-        compass_error = 3600 % abs(compass_error); // error
-    }
-    // Update PW based on error and distance to obstacle
-//    servo_PW = steering_gain * compass_error + range_adj + servo_PW_CENTER;
+
+	//Update servo pulsewidth value
+	servo_PW = servo_PW_CENTER - steering_gain*y_tilt;
+    //Correct PW motor maximum/minimum
     if (servo_PW > servo_PW_MAX) { // Check if pulsewidth maximum exceeded
         servo_PW = servo_PW_MAX; // Set PW to a maximum value
     } else if (servo_PW < servo_PW_MIN) { // Check if less than pulsewidth min
         servo_PW = servo_PW_MIN; // Set SERVO_PW to a minimum value
-    }*/
+    }
 }
