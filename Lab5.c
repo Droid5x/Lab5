@@ -111,7 +111,7 @@ void main(void) {
         // Hold the motor in neutral if the slide switch is active
         if (SS_drive) PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
         else Drive_Motor();
-        if (i > 10) {
+        if (i > 5) {
             Data_Point();
             Load_Menu();
             i = 0;
@@ -161,7 +161,7 @@ void Read_Accelerometer() {
 	x_Average /= 4;
 	y_Average /= 4;
 	//Set global variables
-	x_tilt = x_Average - 40; // -40 offset for calibration
+	x_tilt = x_Average + 0; // 0 offset for calibration
 	y_tilt = y_Average + 60; // +60 offset for calibration
     getTilt = 0;
 }
