@@ -39,24 +39,24 @@ void Read_Accelerometer(void);
 //----------------------------------------------------------------------------
 unsigned char interrupts;
 unsigned char take_heading;
-unsigned int servo_PW_CENTER = 2905; // Center PW value
-unsigned int servo_PW_MIN = 2385; // Minimum left PW value
-unsigned int servo_PW_MAX = 3315; // Maximum right PW value
-unsigned int servo_PW = 2905; // Start PW at center
+unsigned int servo_PW_CENTER = 2725;    // Center PW value
+unsigned int servo_PW_MIN = 2215;       // Minimum left PW value
+unsigned int servo_PW_MAX = 3235;       // Maximum right PW value
+unsigned int servo_PW = servo_PW_CENTER// Start PW at center
 
 float voltage; // Global voltage variable for checking battery voltage
 
 unsigned int MOTOR_PW = MOTOR_PW_NEUT; 	// Motor Pulsewidth to control motor speed
 unsigned int c = 0; 		// Counter for printing data at regular intervals
-unsigned char i = 0;         // Secondary counter for printing data at regular intervals
+unsigned char i = 0;        // Secondary counter for printing data at regular intervals
 unsigned char getTilt = 1; 	// Boolean flag to tell if safe to read accelerometer
 unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 12;  // Steering gain setting
-float drive_gain_x = 10;   // Drive gain for x axis tilt
-float drive_gain_y = 9.5;    // Drive gain for y axis tilt
+float steering_gain = 12;   // Steering gain setting
+float drive_gain_x = 10;    // Drive gain for x axis tilt
+float drive_gain_y = 9.5;   // Drive gain for y axis tilt
 
 __sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
@@ -359,7 +359,6 @@ void PCA_ISR(void) __interrupt 9 {
 //
 
 void Steering_Servo(void) {
-
 	//Update servo pulsewidth value
 	servo_PW = servo_PW_CENTER - steering_gain*y_tilt;
     //Correct PW motor maximum/minimum
