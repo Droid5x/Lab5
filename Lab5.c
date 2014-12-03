@@ -11,7 +11,7 @@
 
 #define MAX_RANGE 60
 #define MOTOR_PW_MIN 2760//2030
-#define MOTOR_PW_MAX 4700
+#define MOTOR_PW_MAX 6700
 #define MOTOR_PW_NEUT 2760
 #define R_ADDR 0xE0
 #define C_ADDR 0xC0
@@ -46,7 +46,7 @@ unsigned int servo_PW = 2905; // Start PW at center
 
 float voltage; // Global voltage variable for checking battery voltage
 
-unsigned int MOTOR_PW = 0; 	// Motor Pulsewidth to control motor speed
+unsigned int MOTOR_PW = MOTOR_PW_NEUT; 	// Motor Pulsewidth to control motor speed
 unsigned int c = 0; 		// Counter for printing data at regular intervals
 unsigned char i = 0;         // Secondary counter for printing data at regular intervals
 unsigned char getTilt = 1; 	// Boolean flag to tell if safe to read accelerometer
@@ -54,9 +54,9 @@ unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 8.5;  // Steering gain setting
-float drive_gain_x = 9.5;   // Drive gain for x axis tilt
-float drive_gain_y = 15;    // Drive gain for y axis tilt
+float steering_gain = 12;  // Steering gain setting
+float drive_gain_x = 10;   // Drive gain for x axis tilt
+float drive_gain_y = 9.5;    // Drive gain for y axis tilt
 
 __sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
@@ -103,10 +103,10 @@ void main(void) {
             PCA0CP0 = 0xFFFF - servo_PW; // Update comparator with new PW value
         }
         // control statements
-        servo_PW = servo_PW_CENTER - steering_gain * x_tilt; //(ks is the steering feedback gain)
-        MOTOR_PW = MOTOR_PW_NEUT + drive_gain_y * y_tilt; //(kdy is the y-axis drive feedback gain)
+        //servo_PW = servo_PW_CENTER - steering_gain * x_tilt; //(ks is the steering feedback gain)
+        //MOTOR_PW = MOTOR_PW_NEUT + drive_gain_y * y_tilt; //(kdy is the y-axis drive feedback gain)
         //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
-        MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
+        //MOTOR_PW += drive_gain_x * abs(x_tilt); //(kdx is the x-axis drive feedback gain)
 
         // Hold the motor in neutral if the slide switch is active
         if (SS_drive) PCA0CP2 = 0xFFFF - MOTOR_PW_NEUT;
@@ -212,9 +212,9 @@ void Check_Menu() {
 
 void Load_Menu(void) {
     lcd_clear();
-    lcd_print("1. Steering Gain\n");
-    lcd_print("2. Drive X Gain\n");
-    lcd_print("3. Drive Y Gain\n");
+    lcd_print("1. Steering %d\n", (int)(steering_gain*10));
+    lcd_print("2. Drive X %d\n", (int)(drive_gain_x * 10));
+    lcd_print("3. Drive Y %d\n", (int)(drive_gain_y * 10));
     lcd_print("X:%4dY:%4dB:%3ddV\n",x_tilt, y_tilt, (int)(voltage*10) );
 }
 
@@ -228,13 +228,13 @@ void Load_Menu(void) {
 // of the drive motor.
 //
 
-void Drive_Motor(void) {     
-    MOTOR_PW = MOTOR_PW_NEUT + drive_gain_x * -1 * x_tilt;//(drive_gain is the y - axis drive feedback gain)
+void Drive_Motor(void) { 
+    MOTOR_PW = MOTOR_PW_NEUT;    
+    //if(abs(x_tilt) < 150) 
+    MOTOR_PW += drive_gain_x * -1 * x_tilt;//(drive_gain is the y - axis drive feedback gain)
     //Add correction for side-to-side tilt, forcing a forward movement to turn the car.
-    MOTOR_PW += drive_gain_y * abs(y_tilt); //(steering_gain is the x - axis drive feedback gain)
-    
-    if(abs(y_tilt)<50||x_tilt<50) = MOTOR_PW = MOTOR_PW_NEUT;
-    
+    //if (abs(y_tilt) < 100) 
+    MOTOR_PW += drive_gain_y * abs(y_tilt); //(steering_gain is the x - axis drive feedback gain)    
     if(MOTOR_PW > MOTOR_PW_MAX)MOTOR_PW = MOTOR_PW_MAX;
     if(MOTOR_PW < MOTOR_PW_MIN)MOTOR_PW = MOTOR_PW_MIN;
     PCA0CP2 = 0xFFFF - MOTOR_PW; // Set High and low byte for the motor
@@ -250,17 +250,16 @@ void Drive_Motor(void) {
 void Port_Init() {
 
     XBR0 = 0x27; // configure crossbar with UART, SPI, SMBus, and CEX channels 
-            // set output pin P1.2 and P1.0 for push-pull mode (CEX2 and CEX0)
-            P1MDOUT |= 0x05;
+    // set output pin P1.2 and P1.0 for push-pull mode (CEX2 and CEX0)
+    P1MDOUT |= 0x05;
 
-            // Port 1 ADC
-            P1MDIN &= ~0x80; //set P1.7 to Analog input
-            P1MDOUT &= ~0x80; //set P1.7 to open drain mode
-            P1 |= 0x80; //set P1.7 to high impedance
+    // Port 1 ADC
+    P1MDIN &= ~0x80; //set P1.7 to Analog input
+    P1MDOUT &= ~0x80; //set P1.7 to open drain mode
+    P1 |= 0x80; //set P1.7 to high impedance
 
-            P3MDOUT &= ~0xC0; // Set P3.6 and 3.7 to inputs
-            P3 |= 0xC0; //set P3.6 and 3.7 to high impedance
-
+    P3MDOUT &= ~0xC0; // Set P3.6 and 3.7 to inputs
+    P3 |= 0xC0; //set P3.6 and 3.7 to high impedance
 }
 
 //-----------------------------------------------------------------------------
@@ -271,11 +270,10 @@ void Port_Init() {
 //
 
 void ADC_Init(void) {
-
     REF0CN = 0x03; // Use internal reference voltage (2.4V)
-            ADC1CN = 0x80; // Enable A/D conversion
-            ADC1CF &= 0xFC; // Reset last two bits to 0
-            ADC1CF |= 0x01; // Gain set to 1.0
+    ADC1CN = 0x80; // Enable A/D conversion
+    ADC1CF &= 0xFC; // Reset last two bits to 0
+    ADC1CF |= 0x01; // Gain set to 1.0
 }
 
 //-----------------------------------------------------------------------------
@@ -287,12 +285,10 @@ void ADC_Init(void) {
 
 unsigned char read_AD_input(void) {
     AMX1SL = 7; // Set pin 7 as the analog input
-            ADC1CN &= ~0x20; // Clear 'conversion complete' flag
-            ADC1CN |= 0x10; // Initiate A/D conversion
-
+    ADC1CN &= ~0x20; // Clear 'conversion complete' flag
+    ADC1CN |= 0x10; // Initiate A/D conversion
     while ((ADC1CN & 0x20) == 0x00); // Wait for conversion to complete
-
-        return ADC1; // Return digital conversion value
+	return ADC1; // Return digital conversion value
     }
 
 //-----------------------------------------------------------------------------
@@ -303,16 +299,14 @@ unsigned char read_AD_input(void) {
 //
 
 void PCA_Init(void) {
-
     PCA0MD = 0x81; // enable CF interrupt, use SYSCLK/12
-
-            PCA0CN = 0x40; // enable PCA0 counter
-            // select 16bit PWM, enable positive edge capture, 
-            // enable pulse width modulation(ranger)
-            PCA0CPM2 = 0xC2;
-            // select 16bit PWM, enable positive edge capture,
-            // enable pulse width modulation(compass)
-            PCA0CPM0 = 0xC2;
+    PCA0CN = 0x40; // enable PCA0 counter
+    // select 16bit PWM, enable positive edge capture, 
+    // enable pulse width modulation(ranger)
+    PCA0CPM2 = 0xC2;
+    // select 16bit PWM, enable positive edge capture,
+    // enable pulse width modulation(compass)
+    PCA0CPM0 = 0xC2;
 }
 
 //-----------------------------------------------------------------------------
@@ -323,10 +317,8 @@ void PCA_Init(void) {
 //
 
 void Interrupt_Init(void) {
-
     EIE1 |= 0x08; //Enable PCA0 Interrupt (bit 3) 
-            EA = 1; //Enable global interrupts
-
+    EA = 1; //Enable global interrupts
 }
 
 //-----------------------------------------------------------------------------
@@ -337,9 +329,8 @@ void Interrupt_Init(void) {
 //
 
 void SMB_Init(void) {
-
     SMB0CR = 0x93; //Configure SCL frequency to 100kHz
-            ENSMB = 1; // Enable SMBus
+    ENSMB = 1; // Enable SMBus
 }
 
 
