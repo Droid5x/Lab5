@@ -13,6 +13,9 @@
 #define MOTOR_PW_MIN 2760//2030
 #define MOTOR_PW_MAX 6700
 #define MOTOR_PW_NEUT 2760
+#define servo_PW_CENTER 2725  // Center PW value
+#define servo_PW_MIN 2215     // Minimum left PW value
+#define servo_PW_MAX 3235     // Maximum right PW value
 #define R_ADDR 0xE0
 #define C_ADDR 0xC0
 #define A_ADDR 0x30
@@ -39,10 +42,7 @@ void Read_Accelerometer(void);
 //----------------------------------------------------------------------------
 unsigned char interrupts;
 unsigned char take_heading;
-unsigned int servo_PW_CENTER = 2725;    // Center PW value
-unsigned int servo_PW_MIN = 2215;       // Minimum left PW value
-unsigned int servo_PW_MAX = 3235;       // Maximum right PW value
-unsigned int servo_PW = servo_PW_CENTER// Start PW at center
+unsigned int servo_PW = servo_PW_CENTER;// Start PW at center
 
 float voltage; // Global voltage variable for checking battery voltage
 
@@ -54,9 +54,9 @@ unsigned char Data[2]; 		// Array for sending and receiving from ranger
 signed int x_tilt = 0;
 signed int y_tilt = 0;
 
-float steering_gain = 12;   // Steering gain setting
-float drive_gain_x = 10;    // Drive gain for x axis tilt
-float drive_gain_y = 9.5;   // Drive gain for y axis tilt
+float steering_gain = 10;   // Steering gain setting
+float drive_gain_x = 12;    // Drive gain for x axis tilt
+float drive_gain_y = 10;   // Drive gain for y axis tilt
 
 __sbit __at 0xB6 SS_drive; 	// Assign P3.6 to SS (Slide Switch)
 __sbit __at 0xB7 SS_steer; 	// Slide switch input pin at P3.7
