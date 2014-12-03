@@ -161,8 +161,8 @@ void Read_Accelerometer() {
 	x_Average /= 4;
 	y_Average /= 4;
 	//Set global variables
-	x_tilt = x_Average;
-	y_tilt = y_Average;
+	x_tilt = x_Average - 40; // -40 offset for calibration
+	y_tilt = y_Average + 60; // +60 offset for calibration
     getTilt = 0;
 }
 
